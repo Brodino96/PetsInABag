@@ -1,0 +1,4 @@
+{
+  "icon": "petsinabag:gui/bag_slot",
+  "validators": [ "trinkets:tag" ]
+}

@@ -1,0 +1,10 @@
+{
+  "allowedPets": [
+    "minecraft:cat",
+    "minecraft:axolotl"
+  ],
+
+  "allowedDimensions": [
+    "minecraft:overworld"
+  ]
+}

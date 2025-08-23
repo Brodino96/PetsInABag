@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "petsinabag",
+  "version": "${version}",
+  "name": "PetsInABag",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/petsinabag/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "net.brodino.petsinabag.client.PetsInABagClient"
+    ],
+    "main": [
+      "net.brodino.petsinabag.PetsInABag"
+    ]
+  },
+  "mixins": [
+    "petsinabag.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
