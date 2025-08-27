@@ -1,0 +1,11 @@
+{
+  "item.petsinabag.pets_bag": "Pet Bag",
+  "item.petsinabag.pets_bag.entity_not_allowed": "This entity cannot be captured",
+  "item.petsinabag.pets_bag.not_owner": "You don't own this pet",
+  "item.petsinabag.pets_bag.full": "Pet bag is full",
+  "item.petsinabag.pets_bag.dimension_not_allowed": "Cannot capture pets in this dimension",
+  "item.petsinabag.pets_bag.captured": "Captured %s",
+  "item.petsinabag.pets_bag.summoned": "Summoned %s",
+  "item.petsinabag.pets_bag.recalled": "Recalled %s",
+  "item.petsinabag.pets_bag.released": "Released %s"
+}

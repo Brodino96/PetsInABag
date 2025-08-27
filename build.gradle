@@ -38,6 +38,9 @@ repositories {
         name = "Ladysnake Libs"
         url = 'https://maven.ladysnake.org/releases'
     }
+
+    // owo_lib
+    maven { url 'https://maven.wispforest.io' }
 }
 
 dependencies {
@@ -50,6 +53,10 @@ dependencies {
 
     // Trinkets
     modImplementation "dev.emi:trinkets:${project.trinkets_version}"
+
+    // owo_lib
+//    modImplementation "io.wispforest:owo-lib:${project.owo_version}"
+//    include "io.wispforest:owo-sentinel:${project.owo_version}"
 }
 
 processResources {

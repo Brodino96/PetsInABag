@@ -1,5 +1,6 @@
-package net.brodino.petsinabag;
+package net.brodino.petsinabag.item;
 
+import net.brodino.petsinabag.PetsInABag;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.util.Identifier;
@@ -16,11 +17,11 @@ public class ItemManager {
 
     public static void initialize() {
         PetsInABag.LOGGER.info("Initializing items");
-        ItemManager.PETS_BAG = ItemManager.register("pets_bag", new Item(new Item.Settings()
+        ItemManager.PETS_BAG = ItemManager.register("pets_bag", new PetBagItem(new Item.Settings()
                 .group(ItemGroup.TOOLS)
                 .rarity(Rarity.EPIC)
                 .maxCount(1)
-                .fireproof()
+                .fireproof(), 9
         ));
     }
 }
