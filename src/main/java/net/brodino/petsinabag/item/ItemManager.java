@@ -21,7 +21,7 @@ public class ItemManager {
                 .group(ItemGroup.TOOLS)
                 .rarity(Rarity.EPIC)
                 .maxCount(1)
-                .fireproof()
+                .fireproof(), 9
         ));
     }
 }
