@@ -1,6 +1,7 @@
 package net.brodino.petsinabag;
 
 import net.brodino.petsinabag.config.Config;
+import net.brodino.petsinabag.item.ItemManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
@@ -20,6 +21,5 @@ public class PetsInABag implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             PetsInABag.SERVER = server;
         });
-
     }
 }
