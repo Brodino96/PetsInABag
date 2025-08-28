@@ -39,7 +39,7 @@ public class PetsInABagClient implements ClientModInitializer {
     
     private void registerScreenEvents() {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-            if (screen instanceof InventoryScreen inventoryScreen) {
+            if (screen instanceof InventoryScreen) {
                 // Register render event for pet overlay
                 ScreenEvents.afterRender(screen).register((screen1, matrices, mouseX, mouseY, tickDelta) -> {
                     if (screen1 instanceof HandledScreen<?> handledScreen) {
