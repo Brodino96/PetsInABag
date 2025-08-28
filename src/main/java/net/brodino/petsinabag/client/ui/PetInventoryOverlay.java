@@ -315,7 +315,7 @@ public class PetInventoryOverlay {
             return false;
         }
         
-        ItemStack bagStack = getBagFromTrinkets();
+        ItemStack bagStack = getBagFromTrinkets(client);
         if (bagStack.isEmpty()) {
             return false;
         }
