@@ -58,6 +58,7 @@ public class PetInventoryOverlay {
     private static int previewPetIndex = -1; // Which pet to show preview for
     
     public static void render(MatrixStack matrices, HandledScreen<?> screen, int mouseX, int mouseY) {
+
         if (!(screen instanceof InventoryScreen)) {
             return;
         }
@@ -67,7 +68,7 @@ public class PetInventoryOverlay {
             return;
         }
         
-        ItemStack bagStack = getBagFromTrinkets();
+        ItemStack bagStack = getBagFromTrinkets(client);
         if (bagStack.isEmpty()) {
             return;
         }
@@ -432,12 +433,8 @@ public class PetInventoryOverlay {
         ClientPlayNetworking.send(NetworkHandler.RELEASE_PET_PACKET, buf);
     }
     
-    private static ItemStack getBagFromTrinkets() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) {
-            return ItemStack.EMPTY;
-        }
-        
+    private static ItemStack getBagFromTrinkets(MinecraftClient client) {
+
         // Check main hand and offhand first
         ItemStack mainHand = client.player.getMainHandStack();
         if (mainHand.getItem() == ItemManager.PETS_BAG) {
@@ -448,7 +445,7 @@ public class PetInventoryOverlay {
         if (offHand.getItem() == ItemManager.PETS_BAG) {
             return offHand;
         }
-        
+
         // TODO: Check trinket slots when API is properly accessible
         return ItemStack.EMPTY;
     }
