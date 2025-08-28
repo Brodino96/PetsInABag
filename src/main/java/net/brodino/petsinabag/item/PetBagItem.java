@@ -3,6 +3,7 @@ package net.brodino.petsinabag.item;
 import dev.emi.trinkets.api.SlotReference;
 import dev.emi.trinkets.api.TrinketItem;
 import net.brodino.petsinabag.PetsInABag;
+import net.brodino.petsinabag.SummonedPetManager;
 import net.brodino.petsinabag.item.data.PetBagData;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -40,6 +41,12 @@ public class PetBagItem extends TrinketItem {
     }
 
     private TypedActionResult<ItemStack> captureEntity(World world, PlayerEntity player, ItemStack stack, Entity entity) {
+
+        // Check if entity is currently summoned by any player
+        if (SummonedPetManager.isEntitySummonedByAnyPlayer(entity.getUuid())) {
+            player.sendMessage(Text.translatable("item.petsinabag.pets_bag.entity_summoned"), true);
+            return TypedActionResult.fail(stack);
+        }
 
         // Check if entity is allowed to be captured
         String entityId = Registry.ENTITY_TYPE.getId(entity.getType()).toString();
