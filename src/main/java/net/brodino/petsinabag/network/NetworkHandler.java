@@ -11,7 +11,7 @@ public class NetworkHandler {
     public static final Identifier RECALL_PET_PACKET = new Identifier(PetsInABag.MOD_ID, "recall_pet");
     public static final Identifier SYNC_SUMMONED_PETS_PACKET = new Identifier(PetsInABag.MOD_ID, "sync_summoned_pets");
     
-    public static void registerServerPackets() {
+    public static void initialize() {
         ServerPlayNetworking.registerGlobalReceiver(SUMMON_PET_PACKET, PetOperationPacketHandler::handleSummonPet);
         ServerPlayNetworking.registerGlobalReceiver(RELEASE_PET_PACKET, PetOperationPacketHandler::handleReleasePet);
         ServerPlayNetworking.registerGlobalReceiver(RECALL_PET_PACKET, PetOperationPacketHandler::handleRecallPet);

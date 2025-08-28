@@ -21,7 +21,7 @@ public class PetsInABag implements ModInitializer {
         LOGGER.info("Initializing PetsInABag mod");
         
         ItemManager.initialize();
-        NetworkHandler.registerServerPackets();
+        NetworkHandler.initialize();
         SummonedPetManager.initialize();
         
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
