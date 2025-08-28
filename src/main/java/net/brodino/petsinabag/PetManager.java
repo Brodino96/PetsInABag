@@ -10,7 +10,7 @@ import net.minecraft.server.world.ServerWorld;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SummonedPetManager {
+public class PetManager {
 
     private static final Map<UUID, Map<UUID, Integer>> playerSummonedPets = new ConcurrentHashMap<>();
     

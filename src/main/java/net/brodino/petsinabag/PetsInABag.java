@@ -22,7 +22,7 @@ public class PetsInABag implements ModInitializer {
         
         ItemManager.initialize();
         NetworkHandler.initialize();
-        SummonedPetManager.initialize();
+        PetManager.initialize();
         
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             PetsInABag.SERVER = server;

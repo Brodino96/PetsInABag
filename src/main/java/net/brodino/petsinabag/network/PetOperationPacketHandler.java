@@ -2,7 +2,7 @@ package net.brodino.petsinabag.network;
 
 import net.brodino.petsinabag.item.data.PetBagData;
 import net.brodino.petsinabag.item.data.StoredPets;
-import net.brodino.petsinabag.SummonedPetManager;
+import net.brodino.petsinabag.PetManager;
 import net.brodino.petsinabag.item.ItemManager;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -45,7 +45,7 @@ public class PetOperationPacketHandler {
                     PetBagData.addSummonedPet(bagStack, entity.getUuid());
                     
                     // Register with summoned pet manager
-                    SummonedPetManager.addSummonedPet(player.getUuid(), entity.getUuid(), petIndex);
+                    PetManager.addSummonedPet(player.getUuid(), entity.getUuid(), petIndex);
                     
                     player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
                         SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.2f);
@@ -75,7 +75,7 @@ public class PetOperationPacketHandler {
             
             // If pet is summoned, remove it from world first
             if (petData.isSummoned()) {
-                SummonedPetManager.recallPet(player.getUuid(), petIndex);
+                PetManager.recallPet(player.getUuid(), petIndex);
             }
             
             Entity entity = petData.createEntity(player.getWorld());
@@ -113,7 +113,7 @@ public class PetOperationPacketHandler {
                 return;
             }
             
-            if (SummonedPetManager.recallPet(player.getUuid(), petIndex)) {
+            if (PetManager.recallPet(player.getUuid(), petIndex)) {
                 // Mark as not summoned
                 petData.setSummoned(false);
                 PetBagData.updatePet(bagStack, petIndex, petData);
