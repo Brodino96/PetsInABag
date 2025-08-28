@@ -114,6 +114,20 @@ public class SummonedPetManager {
         return pets != null ? new HashSet<>(pets.keySet()) : new HashSet<>();
     }
     
+    public static boolean isEntitySummonedByAnyPlayer(UUID entityUUID) {
+        for (Map<UUID, Integer> pets : playerSummonedPets.values()) {
+            if (pets.containsKey(entityUUID)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public static boolean isEntitySummonedByPlayer(UUID playerUUID, UUID entityUUID) {
+        Map<UUID, Integer> pets = playerSummonedPets.get(playerUUID);
+        return pets != null && pets.containsKey(entityUUID);
+    }
+    
     // TODO: Implement proper follow behavior using mixins
     // For now, pets will spawn near the player and stay there
 }
