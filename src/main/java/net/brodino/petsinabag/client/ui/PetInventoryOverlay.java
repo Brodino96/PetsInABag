@@ -83,7 +83,7 @@ public class PetInventoryOverlay {
         // Calculate overlay position (left side of inventory, vertically centered)
         int screenX = (screen.width - 176) / 2;
         int screenY = (screen.height - 166) / 2;
-        int overlayX = screenX - OVERLAY_WIDTH - 8;
+        int overlayX = screenX - OVERLAY_WIDTH - 4;
         int overlayY = screenY; // Vertically centered with inventory
         
         // Set up texture rendering
