@@ -11,28 +11,54 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Quaternion;
+import net.minecraft.util.math.Vec3f;
+import net.minecraft.util.registry.Registry;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 public class PetInventoryOverlay {
-    private static final Identifier PETS_TEXTURE = new Identifier("minecraft", "textures/gui/container/generic_54.png");
-    private static final int OVERLAY_WIDTH = 26;
-    private static final int OVERLAY_HEIGHT = 166;
+    private static final Identifier PET_INVENTORY_TEXTURE = new Identifier("petsinabag", "textures/gui/pet_inventory.png");
+    private static final int OVERLAY_WIDTH = 26; // Single column width
+    private static final int OVERLAY_HEIGHT = 166; // Same height as inventory
     private static final int SLOT_SIZE = 18;
     private static final int SLOTS_PER_COLUMN = 9;
     private static final int MAX_PETS = 9;
     private static final int PADDING = 4;
+    private static final int PREVIEW_WIDTH = 50;
+    private static final int PREVIEW_HEIGHT = 50;
+    
+    // Texture coordinates
+    private static final int BACKGROUND_U = 0;
+    private static final int BACKGROUND_V = 0;
+    private static final int SLOT_U = 26;
+    private static final int SLOT_V = 0;
+    private static final int BUTTON_NORMAL_U = 0;
+    private static final int BUTTON_NORMAL_V = 166;
+    private static final int BUTTON_HOVERED_U = 50;
+    private static final int BUTTON_HOVERED_V = 166;
+    private static final int BUTTON_WIDTH = 50;
+    private static final int BUTTON_HEIGHT = 16;
+    private static final int BUTTON_SPACING = 2;
     
     private static Set<UUID> summonedPetUUIDs = Set.of();
-    private static boolean showActionButtons = false;
+    private static int hoveredPetIndex = -1;
     private static int selectedPetIndex = -1;
+    private static boolean showActionButtons = false;
+    private static int previewPetIndex = -1; // Which pet to show preview for
     
     public static void render(MatrixStack matrices, HandledScreen<?> screen, int mouseX, int mouseY) {
         if (!(screen instanceof InventoryScreen)) {
@@ -60,20 +86,24 @@ public class PetInventoryOverlay {
         int overlayX = screenX - OVERLAY_WIDTH - 8;
         int overlayY = screenY; // Vertically centered with inventory
         
-        // Render inventory-style background
+        // Set up texture rendering
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        RenderSystem.setShaderTexture(0, PET_INVENTORY_TEXTURE);
         
-        // Draw inventory-style background with rounded appearance
-        drawInventoryStyleBackground(matrices, screen, overlayX, overlayY, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        // Draw main background panel (single column)
+        screen.drawTexture(matrices, overlayX, overlayY, BACKGROUND_U, BACKGROUND_V, OVERLAY_WIDTH, OVERLAY_HEIGHT);
+        
+        // Reset hoveredPetIndex each frame
+        hoveredPetIndex = -1;
         
         // Draw slot backgrounds
         for (int i = 0; i < MAX_PETS; i++) {
             int slotX = overlayX + PADDING;
             int slotY = overlayY + PADDING + i * SLOT_SIZE;
             
-            // Draw inventory-style slot
-            drawInventorySlot(matrices, screen, slotX, slotY);
+            // Draw slot background texture
+            screen.drawTexture(matrices, slotX, slotY, SLOT_U, SLOT_V, SLOT_SIZE, SLOT_SIZE);
         }
         
         // Render pet slots (single column)
@@ -95,17 +125,33 @@ public class PetInventoryOverlay {
             int actualSlotX = overlayX + PADDING;
             int actualSlotY = overlayY + PADDING + i * SLOT_SIZE;
             if (mouseX >= actualSlotX && mouseX < actualSlotX + 18 && mouseY >= actualSlotY && mouseY < actualSlotY + 18) {
+                hoveredPetIndex = i;
                 screen.fill(matrices, slotX, slotY, slotX + 16, slotY + 16, 0x80FFFFFF); // White highlight
+                
+                // Update preview to show hovered pet (overrides any selected pet)
+                previewPetIndex = i;
                 
                 // Show tooltip
                 screen.renderTooltip(matrices, Text.literal(petData.getCustomName()), mouseX, mouseY);
             }
         }
         
-        // Show action buttons if a pet is selected
-        if (showActionButtons && selectedPetIndex >= 0 && selectedPetIndex < pets.size()) {
-            renderActionButtons(matrices, screen, overlayX, overlayY, pets.get(selectedPetIndex), mouseX, mouseY);
+        // If hovering a pet, that takes priority. If not hovering but have a selected pet, show that.
+        if (hoveredPetIndex == -1 && selectedPetIndex >= 0) {
+            previewPetIndex = selectedPetIndex;
         }
+        
+        // Render action buttons first (so preview renders on top)
+        if (showActionButtons && selectedPetIndex >= 0 && selectedPetIndex < pets.size()) {
+            renderActionButtons(matrices, screen, overlayX, overlayY, pets.get(selectedPetIndex), selectedPetIndex, mouseX, mouseY);
+        }
+        
+        // Render preview on top (takes priority over buttons)
+        if (previewPetIndex >= 0 && previewPetIndex < pets.size()) {
+            renderPetPreview(matrices, screen, pets.get(previewPetIndex), overlayX, overlayY, previewPetIndex);
+        }
+        
+
     }
     
     private static void renderPetIcon(MatrixStack matrices, HandledScreen<?> screen, StoredPets petData, int x, int y) {
@@ -141,51 +187,124 @@ public class PetInventoryOverlay {
         };
     }
     
-    private static void renderActionButtons(MatrixStack matrices, HandledScreen<?> screen, int overlayX, int overlayY, StoredPets petData, int mouseX, int mouseY) {
-        // Position buttons to the right of the column
-        int buttonX = overlayX + OVERLAY_WIDTH + 5;
+    private static void renderActionButtons(MatrixStack matrices, HandledScreen<?> screen, int overlayX, int overlayY, StoredPets petData, int petIndex, int mouseX, int mouseY) {
+        // Position buttons next to the selected pet slot, below the preview
+        int slotY = overlayY + PADDING + petIndex * SLOT_SIZE;
+        int buttonX = overlayX - PREVIEW_WIDTH - 5;
+        int buttonY = slotY + PREVIEW_HEIGHT + 2; // 2px below preview
+        
+        // Calculate total button area height (2 buttons + spacing between them)
+        int totalButtonHeight = (BUTTON_HEIGHT * 2) + BUTTON_SPACING;
+        
+        // Draw background for button area
+        screen.fill(matrices, buttonX, buttonY, buttonX + PREVIEW_WIDTH, buttonY + totalButtonHeight, 0xFF000000);
+        screen.fill(matrices, buttonX + 1, buttonY + 1, buttonX + PREVIEW_WIDTH - 1, buttonY + totalButtonHeight - 1, 0xFF373737);
         
         // Summon/Recall button
         String actionText = petData.isSummoned() ? "Recall" : "Summon";
-        int actionButtonY = overlayY + 20;
-        renderButton(matrices, screen, actionText, buttonX, actionButtonY, 50, 16, mouseX, mouseY);
+        renderButton(matrices, screen, actionText, buttonX + (PREVIEW_WIDTH - BUTTON_WIDTH) / 2, buttonY + 2, BUTTON_WIDTH, BUTTON_HEIGHT, mouseX, mouseY);
         
-        // Release button
+        // Release button (with spacing)
         String releaseText = "Release";
-        int releaseButtonY = overlayY + 40;
-        renderButton(matrices, screen, releaseText, buttonX, releaseButtonY, 50, 16, mouseX, mouseY);
+        int releaseButtonY = buttonY + 2 + BUTTON_HEIGHT + BUTTON_SPACING;
+        renderButton(matrices, screen, releaseText, buttonX + (PREVIEW_WIDTH - BUTTON_WIDTH) / 2, releaseButtonY, BUTTON_WIDTH, BUTTON_HEIGHT, mouseX, mouseY);
+    }
+    
+    private static void renderPetPreview(MatrixStack matrices, HandledScreen<?> screen, StoredPets petData, int overlayX, int overlayY, int petIndex) {
+        // Position preview area next to the specific pet slot
+        int slotY = overlayY + PADDING + petIndex * SLOT_SIZE;
+        int previewX = overlayX - PREVIEW_WIDTH - 5;
+        int previewY = slotY - (PREVIEW_HEIGHT - SLOT_SIZE) / 2; // Center preview with pet slot
+        
+        // Draw preview background
+        screen.fill(matrices, previewX, previewY, previewX + PREVIEW_WIDTH, previewY + PREVIEW_HEIGHT, 0xFF000000);
+        screen.fill(matrices, previewX + 1, previewY + 1, previewX + PREVIEW_WIDTH - 1, previewY + PREVIEW_HEIGHT - 1, 0xFF373737);
+        
+        // Render the entity isometrically (centered in preview window)
+        renderEntityPreview(matrices, screen, petData, previewX + PREVIEW_WIDTH / 2, previewY + PREVIEW_HEIGHT / 2, 20);
+    }
+    
+    private static void renderEntityPreview(MatrixStack matrices, HandledScreen<?> screen, StoredPets petData, int x, int y, int size) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null) return;
+        
+        try {
+            // Get entity type from stored data
+            Identifier entityTypeId = new Identifier(petData.getEntityTypeId());
+            EntityType<?> entityType = Registry.ENTITY_TYPE.get(entityTypeId);
+            
+            // Create a temporary entity for rendering
+            Entity entity = entityType.create(client.world);
+            if (entity == null) return;
+            
+            // Load entity data from NBT
+            entity.readNbt(petData.getEntityNbt());
+            
+            // Set up rendering matrices for isometric view
+            matrices.push();
+            matrices.translate(x, y, 100);
+            matrices.scale(size, -size, size);
+            
+            // Isometric rotation (30 degrees around X-axis, 45 degrees around Y-axis)
+            matrices.multiply(Vec3f.POSITIVE_X.getDegreesQuaternion(30));
+            matrices.multiply(Vec3f.POSITIVE_Y.getDegreesQuaternion(45));
+            
+            // Set up lighting for entity rendering
+            EntityRenderDispatcher entityRenderDispatcher = client.getEntityRenderDispatcher();
+            VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
+            
+            // Render the entity
+            entityRenderDispatcher.render(entity, 0, 0, 0, 0, 0, matrices, immediate, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+            immediate.draw();
+            
+            matrices.pop();
+        } catch (Exception e) {
+            // If entity rendering fails, show a fallback colored square
+            int color = getColorForEntityType(petData.getEntityTypeId());
+            screen.fill(matrices, x - 8, y - 8, x + 8, y + 8, color);
+        }
+    }
+    
+    private static void renderSmallButton(MatrixStack matrices, HandledScreen<?> screen, String text, int x, int y, int width, int height, int mouseX, int mouseY) {
+        boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+        
+        // Draw button background
+        if (hovered) {
+            screen.fill(matrices, x, y, x + width, y + height, 0xFFFFFFFF);
+            screen.fill(matrices, x + 1, y + 1, x + width - 1, y + height - 1, 0xFFC6C6C6);
+        } else {
+            screen.fill(matrices, x, y, x + width, y + height, 0xFF000000);
+            screen.fill(matrices, x + 1, y + 1, x + width - 1, y + height - 1, 0xFF8B8B8B);
+        }
+        
+        // Draw button text centered with smaller font
+        MinecraftClient client = MinecraftClient.getInstance();
+        matrices.push();
+        matrices.scale(0.6f, 0.6f, 1.0f);
+        int scaledX = (int)((x + width / 2) / 0.6f - client.textRenderer.getWidth(text) / 2);
+        int scaledY = (int)((y + height / 2 - 2) / 0.6f);
+        client.textRenderer.draw(matrices, text, scaledX, scaledY, hovered ? 0xFF000000 : 0xFFFFFFFF);
+        matrices.pop();
     }
     
     private static void renderButton(MatrixStack matrices, HandledScreen<?> screen, String text, int x, int y, int width, int height, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
         
-        // Draw inventory-style button
+        // Set texture for button rendering
+        RenderSystem.setShaderTexture(0, PET_INVENTORY_TEXTURE);
+        
+        // Draw button background texture based on state
         if (hovered) {
-            // Hovered state - lighter
-            screen.fill(matrices, x, y, x + width, y + height, 0xFFFFFFFF);
-            screen.fill(matrices, x + 1, y + 1, x + width - 1, y + height - 1, 0xFFE0E0E0);
+            screen.drawTexture(matrices, x, y, BUTTON_HOVERED_U, BUTTON_HOVERED_V, width, height);
         } else {
-            // Normal state - like inventory background
-            screen.fill(matrices, x, y, x + width, y + height, 0xFFC6C6C6);
-            screen.fill(matrices, x + 1, y + 1, x + width - 1, y + height - 1, 0xFFC6C6C6);
+            screen.drawTexture(matrices, x, y, BUTTON_NORMAL_U, BUTTON_NORMAL_V, width, height);
         }
         
-        // Black outline
-        screen.fill(matrices, x - 1, y - 1, x + width + 1, y, 0xFF000000); // Top
-        screen.fill(matrices, x - 1, y + height, x + width + 1, y + height + 1, 0xFF000000); // Bottom
-        screen.fill(matrices, x - 1, y - 1, x, y + height + 1, 0xFF000000); // Left
-        screen.fill(matrices, x + width, y - 1, x + width + 1, y + height + 1, 0xFF000000); // Right
-        
-        // Button depth effect
-        if (!hovered) {
-            screen.fill(matrices, x, y, x + width, y + 1, 0xFF8B8B8B); // Top shadow
-            screen.fill(matrices, x, y, x + 1, y + height, 0xFF8B8B8B); // Left shadow
-        }
-        
+        // Draw button text centered
         MinecraftClient client = MinecraftClient.getInstance();
         int textX = x + (width - client.textRenderer.getWidth(text)) / 2;
         int textY = y + (height - 8) / 2;
-        screen.drawCenteredText(matrices, client.textRenderer, text, textX + width / 2, textY, 0xFF000000);
+        client.textRenderer.draw(matrices, text, textX, textY, 0xFF000000);
     }
     
     public static boolean handleClick(HandledScreen<?> screen, double mouseX, double mouseY, int button) {
@@ -214,6 +333,33 @@ public class PetInventoryOverlay {
         int overlayX = screenX - OVERLAY_WIDTH - 8;
         int overlayY = screenY;
         
+        // Check if click is within UI area (including preview and button areas)
+        boolean clickInUIArea = false;
+        
+        // Check main overlay area
+        if (mouseX >= overlayX && mouseX < overlayX + OVERLAY_WIDTH && mouseY >= overlayY && mouseY < overlayY + OVERLAY_HEIGHT) {
+            clickInUIArea = true;
+        }
+        
+        // Check preview/button area for selected pet
+        if (selectedPetIndex >= 0) {
+            int slotY = overlayY + PADDING + selectedPetIndex * SLOT_SIZE;
+            int previewX = overlayX - PREVIEW_WIDTH - 5;
+            int previewY = slotY - (PREVIEW_HEIGHT - SLOT_SIZE) / 2;
+            int buttonY = slotY + PREVIEW_HEIGHT + 2;
+            int totalButtonHeight = (BUTTON_HEIGHT * 2) + BUTTON_SPACING + 4; // +4 for padding
+            
+            // Check preview area
+            if (mouseX >= previewX && mouseX < previewX + PREVIEW_WIDTH && mouseY >= previewY && mouseY < previewY + PREVIEW_HEIGHT) {
+                clickInUIArea = true;
+            }
+            
+            // Check button area
+            if (showActionButtons && mouseX >= previewX && mouseX < previewX + PREVIEW_WIDTH && mouseY >= buttonY && mouseY < buttonY + totalButtonHeight) {
+                clickInUIArea = true;
+            }
+        }
+        
         // Check pet slot clicks (single column)
         for (int i = 0; i < Math.min(pets.size(), MAX_PETS); i++) {
             int slotX = overlayX + PADDING;
@@ -222,18 +368,24 @@ public class PetInventoryOverlay {
             if (mouseX >= slotX && mouseX < slotX + 18 && mouseY >= slotY && mouseY < slotY + 18) {
                 selectedPetIndex = i;
                 showActionButtons = true;
+                previewPetIndex = i;
                 return true;
             }
         }
         
-        // Check action button clicks
+        // Check action button clicks (below preview area)
         if (showActionButtons && selectedPetIndex >= 0 && selectedPetIndex < pets.size()) {
-            int buttonX = overlayX + OVERLAY_WIDTH + 5;
             StoredPets petData = pets.get(selectedPetIndex);
             
+            // Calculate button positions (same as in render method)
+            int slotY = overlayY + PADDING + selectedPetIndex * SLOT_SIZE;
+            int buttonX = overlayX - PREVIEW_WIDTH - 5;
+            int buttonY = slotY + PREVIEW_HEIGHT + 2; // 2px below preview
+            int centeredButtonX = buttonX + (PREVIEW_WIDTH - BUTTON_WIDTH) / 2;
+            
             // Summon/Recall button
-            int actionButtonY = overlayY + 20;
-            if (mouseX >= buttonX && mouseX < buttonX + 50 && mouseY >= actionButtonY && mouseY < actionButtonY + 16) {
+            int actionButtonY = buttonY + 2;
+            if (mouseX >= centeredButtonX && mouseX < centeredButtonX + BUTTON_WIDTH && mouseY >= actionButtonY && mouseY < actionButtonY + BUTTON_HEIGHT) {
                 if (petData.isSummoned()) {
                     sendRecallPacket(selectedPetIndex);
                 } else {
@@ -241,22 +393,27 @@ public class PetInventoryOverlay {
                 }
                 showActionButtons = false;
                 selectedPetIndex = -1;
+                previewPetIndex = -1;
                 return true;
             }
             
             // Release button
-            int releaseButtonY = overlayY + 40;
-            if (mouseX >= buttonX && mouseX < buttonX + 50 && mouseY >= releaseButtonY && mouseY < releaseButtonY + 16) {
+            int releaseButtonY = buttonY + 2 + BUTTON_HEIGHT + BUTTON_SPACING;
+            if (mouseX >= centeredButtonX && mouseX < centeredButtonX + BUTTON_WIDTH && mouseY >= releaseButtonY && mouseY < releaseButtonY + BUTTON_HEIGHT) {
                 sendReleasePacket(selectedPetIndex);
                 showActionButtons = false;
                 selectedPetIndex = -1;
+                previewPetIndex = -1;
                 return true;
             }
         }
         
-        // Click elsewhere closes action buttons
-        showActionButtons = false;
-        selectedPetIndex = -1;
+        // Click outside UI area clears all state
+        if (!clickInUIArea) {
+            showActionButtons = false;
+            selectedPetIndex = -1;
+            previewPetIndex = -1;
+        }
         return false;
     }
     
@@ -303,36 +460,5 @@ public class PetInventoryOverlay {
         summonedPetUUIDs = newSummonedPets;
     }
     
-    private static void drawInventoryStyleBackground(MatrixStack matrices, HandledScreen<?> screen, int x, int y, int width, int height) {
-        // Main background (light gray/white)
-        screen.fill(matrices, x, y, x + width, y + height, 0xFFC6C6C6);
-        
-        // Black outline
-        screen.fill(matrices, x - 1, y - 1, x + width + 1, y, 0xFF000000); // Top
-        screen.fill(matrices, x - 1, y + height, x + width + 1, y + height + 1, 0xFF000000); // Bottom
-        screen.fill(matrices, x - 1, y - 1, x, y + height + 1, 0xFF000000); // Left
-        screen.fill(matrices, x + width, y - 1, x + width + 1, y + height + 1, 0xFF000000); // Right
-        
-        // Inner shadow/depth effect (darker gray at top and left)
-        screen.fill(matrices, x, y, x + width, y + 1, 0xFF8B8B8B); // Top shadow
-        screen.fill(matrices, x, y, x + 1, y + height, 0xFF8B8B8B); // Left shadow
-        
-        // Lighter highlight at bottom and right
-        screen.fill(matrices, x, y + height - 1, x + width, y + height, 0xFFFFFFFF); // Bottom highlight
-        screen.fill(matrices, x + width - 1, y, x + width, y + height, 0xFFFFFFFF); // Right highlight
-    }
-    
-    private static void drawInventorySlot(MatrixStack matrices, HandledScreen<?> screen, int x, int y) {
-        // Slot background (darker gray)
-        screen.fill(matrices, x, y, x + 18, y + 18, 0xFF8B8B8B);
-        
-        // Slot inner area (darker)
-        screen.fill(matrices, x + 1, y + 1, x + 17, y + 17, 0xFF373737);
-        
-        // Slot highlight borders
-        screen.fill(matrices, x, y, x + 18, y + 1, 0xFF373737); // Top
-        screen.fill(matrices, x, y, x + 1, y + 18, 0xFF373737); // Left
-        screen.fill(matrices, x, y + 17, x + 18, y + 18, 0xFFFFFFFF); // Bottom
-        screen.fill(matrices, x + 17, y, x + 18, y + 18, 0xFFFFFFFF); // Right
-    }
+
 }
