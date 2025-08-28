@@ -153,20 +153,12 @@ public class PetInventoryOverlay {
     }
     
     private static void renderPetIcon(MatrixStack matrices, HandledScreen<?> screen, StoredPets petData, int x, int y) {
-        // Render a colored icon based on entity type
-        String entityType = petData.getEntityTypeId();
-        int color = getColorForEntityType(entityType);
+        // Render small entity in the center of the 16x16 slot area
+        int centerX = x + 8; // Center of 16px wide area
+        int centerY = y + 8; // Center of 16px tall area
         
-        // Draw main pet color
-        screen.fill(matrices, x + 3, y + 3, x + 13, y + 13, color);
-        
-        // Add a subtle border for better visibility
-        screen.fill(matrices, x + 2, y + 2, x + 14, y + 3, 0xFF000000); // Top
-        screen.fill(matrices, x + 2, y + 13, x + 14, y + 14, 0xFF000000); // Bottom
-        screen.fill(matrices, x + 2, y + 2, x + 3, y + 14, 0xFF000000); // Left
-        screen.fill(matrices, x + 13, y + 2, x + 14, y + 14, 0xFF000000); // Right
-        
-        // TODO: Render actual entity models or icons
+        // Render the entity at a smaller scale to fit in the slot
+        renderEntityPreview(matrices, screen, petData, centerX, centerY, 8);
     }
     
     private static int getColorForEntityType(String entityType) {
