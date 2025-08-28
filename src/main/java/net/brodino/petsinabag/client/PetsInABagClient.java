@@ -4,13 +4,9 @@ package net.brodino.petsinabag.client;
 import net.brodino.petsinabag.client.ui.PetInventoryOverlay;
 import net.brodino.petsinabag.network.NetworkHandler;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 
@@ -22,26 +18,8 @@ public class PetsInABagClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        this.registerCommand();
         this.registerNetworking();
         this.registerScreenEvents();
-    }
-
-    private void registerCommand() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(
-                    ClientCommandManager.literal("dio")
-                            .executes(context -> {
-                                // Debug command - could be used for testing or opening inventory
-                                var client = MinecraftClient.getInstance();
-                                if (client.player != null) {
-                                    client.player.sendMessage(net.minecraft.text.Text.literal("Pet Bag UI is available in your inventory when equipped!"), false);
-                                }
-                                return 0;
-                            }
-                    )
-            );
-        });
     }
     
     private void registerNetworking() {
