@@ -35,7 +35,6 @@ public class PetInventoryOverlay {
     private static final int OVERLAY_WIDTH = 26; // Single column width
     private static final int OVERLAY_HEIGHT = 166; // Same height as inventory
     private static final int SLOT_SIZE = 18;
-    private static final int SLOTS_PER_COLUMN = 9;
     private static final int MAX_PETS = 9;
     private static final int PADDING = 4;
     private static final int PREVIEW_WIDTH = 50;
