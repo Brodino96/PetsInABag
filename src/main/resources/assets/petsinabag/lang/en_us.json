@@ -7,5 +7,6 @@
   "item.petsinabag.pets_bag.captured": "Captured %s",
   "item.petsinabag.pets_bag.summoned": "Summoned %s",
   "item.petsinabag.pets_bag.recalled": "Recalled %s",
-  "item.petsinabag.pets_bag.released": "Released %s"
+  "item.petsinabag.pets_bag.released": "Released %s",
+  "item.petsinabag.pets_bag.entity_summoned": "Cannot capture summoned pets"
 }
